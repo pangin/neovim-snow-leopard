@@ -1,0 +1,16 @@
+--- a/src/lj_prng.c
++++ b/src/lj_prng.c
+@@ -143,6 +143,13 @@
+ #include <fcntl.h>
+ #include <unistd.h>
+ 
++/* Mac OS X 10.6 (Snow Leopard): O_CLOEXEC arrived in 10.7. The descriptor
++   opened here is read once and closed immediately, so omitting the flag
++   changes nothing observable. */
++#ifndef O_CLOEXEC
++#define O_CLOEXEC 0
++#endif
++
+ #endif
+ 
+ #if LUAJIT_SECURITY_PRNG == 0

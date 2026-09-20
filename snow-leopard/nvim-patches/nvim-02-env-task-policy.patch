@@ -1,0 +1,17 @@
+--- a/src/nvim/os/env.c
++++ b/src/nvim/os/env.c
+@@ -362,10 +362,14 @@
+ {
+ #ifdef __APPLE__
+   // By default, processes have the TASK_UNSPECIFIED "role", which means all of its threads are
++#ifdef TASK_DEFAULT_APPLICATION
++  // Mac OS X 10.6 (Snow Leopard): task category policy and App Nap arrived
++  // in 10.9. Without the constant there is nothing to opt out of.
+   // clamped to Default QoS. Setting the role to TASK_DEFAULT_APPLICATION removes this clamp.
+   integer_t policy = TASK_DEFAULT_APPLICATION;
+   task_policy_set(mach_task_self(), TASK_CATEGORY_POLICY, &policy, 1);
+ #endif
++#endif
+ }
+ 
+ /// Gets the hostname of the current machine.

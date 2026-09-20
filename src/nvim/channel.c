@@ -43,6 +43,27 @@
 #include "nvim/terminal.h"
 #include "nvim/types_defs.h"
 
+#ifndef F_DUPFD_CLOEXEC
+// Mac OS X 10.6 (Snow Leopard): F_DUPFD_CLOEXEC arrived in 10.7. Duplicate
+// first, then mark the copy close-on-exec. The window between the two calls
+// is the same one every pre-10.7 program accepts.
+static int nvim_dupfd_cloexec(int fd, int minfd)
+{
+  int nfd = fcntl(fd, F_DUPFD, minfd);
+  if (nfd >= 0 && fcntl(nfd, F_SETFD, FD_CLOEXEC) == -1) {
+    int saved = errno;
+    close(nfd);
+    errno = saved;
+    return -1;
+  }
+  return nfd;
+}
+# define NVIM_DUPFD_CLOEXEC(fd, minfd) nvim_dupfd_cloexec((fd), (minfd))
+#else
+# define NVIM_DUPFD_CLOEXEC(fd, minfd) fcntl((fd), F_DUPFD_CLOEXEC, (minfd))
+#endif
+
+
 #ifdef MSWIN
 # include "nvim/os/fs.h"
 # include "nvim/os/os_win_console.h"
@@ -546,8 +567,8 @@ uint64_t channel_from_stdio(bool rpc, CallbackReader on_output, const char **err
     // Redirect stdout/stdin (the UI channel) to stderr. Use fnctl(F_DUPFD_CLOEXEC) instead of dup()
     // to prevent child processes from inheriting the file descriptors, which are used by UIs to
     // detect when Nvim exits.
-    stdin_dup_fd = fcntl(STDIN_FILENO, F_DUPFD_CLOEXEC, STDERR_FILENO + 1);
-    stdout_dup_fd = fcntl(STDOUT_FILENO, F_DUPFD_CLOEXEC, STDERR_FILENO + 1);
+    stdin_dup_fd = NVIM_DUPFD_CLOEXEC(STDIN_FILENO, STDERR_FILENO + 1);
+    stdout_dup_fd = NVIM_DUPFD_CLOEXEC(STDOUT_FILENO, STDERR_FILENO + 1);
     dup2(STDERR_FILENO, STDOUT_FILENO);
     dup2(STDERR_FILENO, STDIN_FILENO);
   }
